@@ -1,13 +1,38 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from typing import AsyncGenerator
+import os
+from dotenv import load_dotenv
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./tasks.db"
+load_dotenv()
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=True,
+    future=True,
+    pool_pre_ping=True,
+    connect_args={"statement_cache_size": 0},
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+async_session_maker = async_sessionmaker(
+    engine,
+    expire_on_commit=False,
+    autoflush=False,
+    autocommit=False,
+    class_=AsyncSession
+)
 
 Base = declarative_base()
+
+
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session_maker() as session:
+        yield session
+
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("DB initialized")

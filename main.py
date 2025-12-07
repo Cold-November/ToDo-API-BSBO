@@ -1,26 +1,27 @@
-# main.py
 from fastapi import FastAPI
-from tasks_router import router as tasks_router
+from routers import tasks, stats
+from scheduler import start_scheduler
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_scheduler()            # <-- запускаем планировщик при старте
+    print("Приложение запущено")
+    yield                        # <-- сервер работает
+    print("Приложение остановлено")
+
 
 app = FastAPI(
-    title="ToDo API",
-    version="1.0",
-    contact={"name": "Дмитрий"}
+    title="Task Manager API",
+    version="2.0.0",
+    lifespan=lifespan            # <-- современный способ вместо on_event
 )
+
+app.include_router(tasks.router, prefix="/api/v2")
+app.include_router(stats.router, prefix="/api/v2")
 
 
 @app.get("/")
-async def root() -> dict:
-    return {
-        "message": "Добро пожаловать в ToDo API!",
-        "app": {
-            "title": app.title,
-            "version": app.version,
-            "description": app.description,
-            "contact": app.contact,
-        }
-    }
-
-
-# Подключаем router
-app.include_router(tasks_router)
+async def root():
+    return {"msg": "API работает!"}
