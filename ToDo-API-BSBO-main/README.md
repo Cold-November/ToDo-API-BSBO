@@ -1,4 +1,4 @@
-# ToDo API + Telegram Bot
+# ToDo API
 
 Система управления задачами с использованием матрицы Эйзенхауэра, состоящая из:
 - **Backend API** (FastAPI + PostgreSQL)
