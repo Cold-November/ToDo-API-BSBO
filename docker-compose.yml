@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: todo_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: todo_backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/postgres
+      SECRET_KEY: "CHANGE_ME_SECRET_KEY"
+      PORT: "${BACKEND_PORT:-8000}"
+      HOST: "0.0.0.0"
+    ports:
+      - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
+
+  bot:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: todo_bot
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
+      BACKEND_HOST: "backend"
+      BACKEND_PORT: "${BACKEND_PORT:-8000}"
+      API_BASE_URL: "http://backend:${BACKEND_PORT:-8000}/api/v3"
+    command: ["python", "-m", "bot.bot"]
+
+volumes:
+  postgres_data:
+
+
